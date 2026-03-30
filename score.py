@@ -67,12 +67,13 @@ def run_suite(label: str, relative_path: str, *, verbosity: int) -> SuiteSummary
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the shared ring buffer score harness.")
+    parser = argparse.ArgumentParser(description="Run the shared buffer score harness.")
     parser.add_argument("--module", default="solution", help="Module name to score. Defaults to solution.")
     parser.add_argument(
-        "--include-student-tests",
+        "--include-applicant-tests",
+        dest="include_applicant_tests",
         action="store_true",
-        help="Also run tests under tests/student.",
+        help="Also run tests under tests/applicant.",
     )
     parser.add_argument(
         "--strict",
@@ -82,22 +83,22 @@ def main() -> int:
     parser.add_argument("--verbose", action="store_true", help="Use verbose unittest output.")
     args = parser.parse_args()
 
-    os.environ["RING_BUFFER_MODULE"] = args.module
+    os.environ["SHARED_BUFFER_MODULE"] = args.module
     verbosity = 2 if args.verbose else 1
 
     print(f"Scoring module: {args.module}")
     official = run_suite("Official Tests", "tests/official", verbosity=verbosity)
 
-    student = None
-    if args.include_student_tests:
-        student = run_suite("Student Tests", "tests/student", verbosity=verbosity)
+    applicant = None
+    if args.include_applicant_tests:
+        applicant = run_suite("Applicant Tests", "tests/applicant", verbosity=verbosity)
 
-    if student is None:
+    if applicant is None:
         print(f"\nCurrent official score: {official.passed}/{official.total}")
     else:
         print(
             f"\nCurrent score: {official.passed}/{official.total} official, "
-            f"{student.passed}/{student.total} student"
+            f"{applicant.passed}/{applicant.total} applicant"
         )
 
     if args.strict and not official.successful:

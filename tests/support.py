@@ -6,14 +6,13 @@ import os
 import uuid
 
 
-SUBMISSION_MODULE_NAME = os.environ.get("RING_BUFFER_MODULE", "solution")
+SUBMISSION_MODULE_NAME = os.environ.get("SHARED_BUFFER_MODULE", "solution")
 submission_module = importlib.import_module(SUBMISSION_MODULE_NAME)
-SharedRingBuffer = getattr(submission_module, "SharedRingBuffer")
-RingSpec = getattr(submission_module, "RingSpec", None)
-NO_READER = getattr(SharedRingBuffer, "_NO_READER", -1)
+SharedBuffer = getattr(submission_module, "SharedBuffer")
+NO_READER = getattr(SharedBuffer, "_NO_READER", -1)
 
 
-def make_name(prefix: str = "rb") -> str:
+def make_name(prefix: str = "buf") -> str:
     return f"{prefix}{uuid.uuid4().hex[:20]}"
 
 
@@ -31,54 +30,54 @@ def release_mem_views(*views: memoryview | None) -> None:
             pass
 
 
-def drop_local_views(ring) -> None:
-    if ring is None:
+def drop_local_views(buffer_obj) -> None:
+    if buffer_obj is None:
         return
     try:
-        ring.ring_buffer.release()
+        buffer_obj.buffer.release()
     except Exception:
         pass
     try:
-        del ring.ring_buffer
+        del buffer_obj.buffer
     except Exception:
         pass
     try:
-        ring.header = None
+        buffer_obj.header = None
     except Exception:
         pass
     try:
-        del ring.header
+        del buffer_obj.header
     except Exception:
         pass
 
 
-def cleanup_ring(ring, *, unlink: bool = True) -> None:
-    if ring is None:
+def cleanup_buffer(buffer_obj, *, unlink: bool = True) -> None:
+    if buffer_obj is None:
         return
-    drop_local_views(ring)
+    drop_local_views(buffer_obj)
     gc.collect()
     try:
-        ring.close()
+        buffer_obj.close()
     except Exception:
         pass
     if unlink:
         try:
-            ring.unlink()
+            buffer_obj.unlink()
         except FileNotFoundError:
             pass
 
 
-def set_reader_state(ring, reader: int, *, pos: int | None = None, alive: int | None = None) -> None:
+def set_reader_state(buffer_obj, reader: int, *, pos: int | None = None, alive: int | None = None) -> None:
     slot = reader_slot(reader)
     if pos is not None:
-        ring.header[slot] = pos
+        buffer_obj.header[slot] = pos
     if alive is not None:
-        ring.header[slot + 1] = alive
-    if hasattr(ring, "_reader_positions_dirty"):
-        ring._reader_positions_dirty = True
+        buffer_obj.header[slot + 1] = alive
+    if hasattr(buffer_obj, "_reader_positions_dirty"):
+        buffer_obj._reader_positions_dirty = True
 
 
-def mark_reader_alive(ring, reader_index: int | None = None) -> None:
+def mark_reader_alive(buffer_obj, reader_index: int | None = None) -> None:
     if reader_index is None:
-        reader_index = ring.reader
-    set_reader_state(ring, reader_index, alive=1)
+        reader_index = buffer_obj.reader
+    set_reader_state(buffer_obj, reader_index, alive=1)
